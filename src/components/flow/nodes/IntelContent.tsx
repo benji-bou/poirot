@@ -18,7 +18,7 @@ export function IntelContent({ intel }: IntelContentProp): ReactNode {
     <Stack spacing={2}>
       <Stack direction="row" spacing={1}>
         {iT.map((i) => {
-          return <Chip label={i} />;
+          return <Chip key={i} label={i} />;
         })}
       </Stack>
 

@@ -12,13 +12,18 @@ import {
   type DefaultEdgeOptions,
   useReactFlow,
   BackgroundVariant,
+  Panel,
+  MarkerType,
+  OnConnectEnd,
+  OnConnectStart,
 } from '@xyflow/react';
 
-import { CardBaseNode, NewCardNode } from '../nodes/BaseNode'
+import { CardBaseNode, NewCardNode, NodeIntelData } from '../nodes/BaseNode'
 import {
   useCrudEdge,
   useCrudNode,
   useEdgesState,
+  useHighlightedNodes,
   useNewCardNode,
   useNodeEdgeIndexState,
   useNodesState,
@@ -26,6 +31,8 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useEventListener } from '@react-hookz/web';
 import { NewIntel } from '../../../models/Intel';
+import { FloatingConnectionLine, FloatingEdge } from './FloatingEdges';
+
 
 
 const fitViewOptions: FitViewOptions = {
@@ -48,6 +55,12 @@ interface CanvasProps {
   edgesOptions?: DefaultEdgeOptions
 }
 
+
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
+
 export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
   const [nodes, onNodesChange] = useNodesState();
   const [edges, onEdgesChange] = useEdgesState();
@@ -55,7 +68,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
   const { upsertNode } = useCrudNode()
   const { upsertEdge } = useCrudEdge()
   const addNode = useNewCardNode()
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getNodes } = useReactFlow()
   const mouseXYRef = useRef({ x: 0, y: 0 })
   const canvaRef = createRef<HTMLDivElement>()
 
@@ -72,13 +85,33 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
 
   useEventListener(window, 'paste', handlePast)
 
-  const onConnect: OnConnect = useCallback((connection) =>
-    upsertEdge(...addEdge(connection, Object.values(nodeEdgesIndex.edges))),
+  const currentNodeIdForNewEdge = useRef<string | null>(null)
+
+  const onConnect: OnConnect = useCallback((connection) => {
+    currentNodeIdForNewEdge.current = null;
+    upsertEdge(...addEdge({ ...connection, type: 'floating', markerEnd: { type: MarkerType.Arrow } }, Object.values(nodeEdgesIndex.edges)))
+  },
     [nodeEdgesIndex]
   )
 
+  const onConnectStart: OnConnectStart = useCallback((_, { nodeId }) => {
+    currentNodeIdForNewEdge.current = nodeId
+  }, [])
 
 
+  const onConnectEnd: OnConnectEnd = useCallback((event) => {
+
+    const highlightedNodes = getNodes().filter((node) => ((node.data) as NodeIntelData)?.interaction?.highlight)
+    if (highlightedNodes.length == 0) {
+      return
+    }
+    console.log(highlightedNodes[0].id)
+    console.log(currentNodeIdForNewEdge.current)
+    if (!currentNodeIdForNewEdge.current || highlightedNodes.length != 1) {
+      return
+    }
+    upsertEdge({ id: "e-" + currentNodeIdForNewEdge.current + "-" + highlightedNodes[0].id, source: currentNodeIdForNewEdge.current, target: highlightedNodes[0].id, type: 'floating', markerEnd: { type: MarkerType.Arrow } })
+  }, [getNodes])
 
 
   const nodeTypes = useMemo(() => ({ card: CardBaseNode }), []);
@@ -93,9 +126,13 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
       nodes={nodes}
       nodeTypes={nodeTypes}
       edges={edges}
+      edgeTypes={edgeTypes}
+      connectionLineComponent={FloatingConnectionLine}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onConnectStart={onConnectStart}
+      onConnectEnd={onConnectEnd}
       onMouseMove={(event) => { mouseXYRef.current = screenToFlowPosition({ x: event.pageX, y: event.pageY }) }}
       onNodeDrag={onNodeDrag}
       onDoubleClick={(event: React.MouseEvent) => {
@@ -109,6 +146,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
     >
       <Background color="#cec" variant={variant} />
       <Controls />
+
       {/* <MiniMap nodeStrokeWidth={3} zoomable pannable /> */}
     </ReactFlow>
   );

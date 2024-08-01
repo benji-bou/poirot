@@ -89,7 +89,7 @@ export function BaseNode({ children, selected, id, borderWidth = 5 }: { children
         onMouseEnter={() => { updateHighligh(true) }}
         onMouseLeave={() => { updateBorderWidth({ x: 0, y: 0 }, Position.Top, false); updateHighligh(false) }}
       >
-        <Handle type={"target"} position={Position.Left} />
+        <Handle type={"target"} position={Position.Left} style={{ left: 50 }} />
         <NodeResizer isVisible={selected} minWidth={100} minHeight={30} />
         <motion.div
           style={{ position: 'absolute', top: borderW, right: borderW, left: borderW }}

@@ -1,10 +1,10 @@
-import { useState } from "react"
+
 
 
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { RightPanel } from "./RightPanel";
 import { MainPanel } from "./Mainpanel";
-import { Box, Divider, ThemeProvider } from "@mui/material";
+import { Box, Divider, IconButton, ThemeProvider } from "@mui/material";
 import { themeOptions } from "../../themes/dynamic";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeIndexProvider } from "../../hooks/NodesState";
@@ -12,8 +12,10 @@ import { Restore, Save } from "../interactions/SaveAndRestore";
 
 
 
-export function Layout() {
+import { LayoutFlow } from "../interactions/LayoutFlow";
 
+
+export function Layout() {
   return (
     <>
       <ThemeProvider theme={themeOptions}>
@@ -21,6 +23,7 @@ export function Layout() {
           <NodeIndexProvider>
             <Save keyFile="toto" />
             <Restore keyFile="toto" />
+            <LayoutFlow />
             <PanelGroup direction="horizontal" >
               <Panel onPaste={(e) => console.log("panel")} minSize={40} defaultSize={70}  >
                 <Box height="100vh" width={"100%"} color={"red"}>

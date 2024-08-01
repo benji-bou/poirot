@@ -44,7 +44,7 @@ export function IntelCard({ id }: IntelCardProps) {
       return res.union(tools)
     }, new Set<string>()) ?? new Set<string>()
     return Array.from(tools)
-  }, [node.data.intel?.type])
+  }, [node?.data?.intel?.type])
 
   if (!node) {
     return <></>

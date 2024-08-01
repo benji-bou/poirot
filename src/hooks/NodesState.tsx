@@ -18,7 +18,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 
 import { createContext } from "react";
 import { idText } from "typescript";
-import { NewCardNode } from "../components/flow/nodes/BaseNode";
+import { NewCardNode, NodeIntelData } from "../components/flow/nodes/BaseNode";
 type NodesIndex = {
   [id: string]: Node
 }
@@ -187,4 +187,10 @@ export function useNewCardNode() {
     upsertNode(newCardNode)
 
   }, [upsertNode])
+}
+
+
+export function useHighlightedNodes() {
+  const nodes = useNodes()
+  return nodes.filter((node) => ((node.data) as NodeIntelData)?.interaction?.highlight)
 }
