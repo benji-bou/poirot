@@ -29,6 +29,47 @@ export abstract class SecPipeline {
   }
 }
 
+class Sherlock extends SecPipeline {
+  availableParamsKey: string[] = ["input"]
+  template: string = `
+name: sherlock
+description: osint
+author: bbo
+version: "0.1"
+stages: 
+  inputName: 
+    plugin: rawinput
+    config: 
+      data: "<#input#>"
+  holehe:
+    parents: 
+      - inputName
+    plugin: docker
+    pipe: 
+      - goTemplate:
+          format: string
+          pattern: " --no-color  {{ . }}"
+    config:
+      host: unix:///Users/benjamin/.orbstack/run/docker.sock
+      image: "sherlock/sherlock:latest"
+  transformResult: 
+    parents: 
+      - holehe
+    plugin: forward
+    pipe: 
+      - split:
+          sep: "\\n"
+      - goTemplate: 
+          pattern: "{{ trim . }}"
+          format: string
+      - regex:
+          pattern: '^\\[\\+\\]\\s*(.*\\.com.*)$'
+          select: 1
+  `
+  description?: string | undefined = "Hunt down social media accounts by username across 400+ social networks"
+  source?: string | undefined = "https://github.com/sherlock-project/sherlock"
+
+}
 
 
 class Holehe extends SecPipeline {
@@ -67,8 +108,11 @@ stages:
           pattern: "{{ trim . }}"
           format: string
       - regex:
-          pattern: '^\\[\\+\\]\\s*(.*)$'
+          pattern: '^\\[\\+\\]\\s*(.*\\.com.*)$'
           select: 1
+      - goTemplate: 
+          format: string
+          pattern: "https://{{ trim .}}"
   `
 }
 

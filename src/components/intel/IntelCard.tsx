@@ -1,22 +1,23 @@
-import { useReactFlow } from "@xyflow/react"
+import { Edge, MarkerType, useReactFlow } from "@xyflow/react"
 import { CardNode, NewCardNode, NodeIntelData } from "../flow/nodes/BaseNode"
 import Card from "@mui/material/Card"
 import CardHeader from "@mui/material/CardHeader"
 import CardContent from "@mui/material/CardContent"
 import IntelForm from "./IntelForm"
 import { Intel, IntelTypeValidator, IntelTypeIndex, IntelTypeStore, NewIntel } from "../../models/Intel"
-import { Box, Button, Divider, Link, List, ListItem, Stack, Typography } from "@mui/material"
+import { Box, Button, CircularProgress, Divider, Link, List, ListItem, Stack, Typography } from "@mui/material"
 
 
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
 import { useCallback, useEffect, useMemo } from "react"
-import { useCrudNode, useNode } from "../../hooks/NodesState"
+import { useCrudEdge, useCrudNode, useNode } from "../../hooks/NodesState"
 import { SecPipeline } from "../../models/tooling"
 import { log } from "console"
 import isURL from "validator/lib/isURL"
 import { useSecpipeline, useToolsStore } from "../../hooks/SecPipeline"
+import { useToggle } from "@react-hookz/web"
 
 
 
@@ -29,6 +30,7 @@ interface IntelCardProps extends CardNode {
 export function IntelCard({ id }: IntelCardProps) {
   const { screenToFlowPosition } = useReactFlow()
   const { upsertNode } = useCrudNode()
+  const { upsertEdge } = useCrudEdge()
   const toolStore = useToolsStore()
   const [node, updateNode] = useNode<CardNode>(id)
   const options = useMemo<string[]>(
@@ -39,7 +41,7 @@ export function IntelCard({ id }: IntelCardProps) {
     [IntelTypeStore.all],
   );
   const toolListName: string[] = useMemo(() => {
-    const tools = node.data.intel?.type.reduce<Set<string>>((res, current) => {
+    const tools = node?.data?.intel?.type.reduce<Set<string>>((res, current) => {
       const tools = new Set<string>(toolStore.getToolsName(current))
       return res.union(tools)
     }, new Set<string>()) ?? new Set<string>()
@@ -87,10 +89,15 @@ export function IntelCard({ id }: IntelCardProps) {
           {toolListName.map((t) => <ListItem key={t}>
             <ToolCard name={t} onResultChanged={(values) => {
               const newNodes = values.map((value) =>
-                NewCardNode(screenToFlowPosition({ x: node.position.x - 200, y: node.position.y - 200 }), NewIntel(value))
+                NewCardNode(screenToFlowPosition({ x: node.position.x - 200, y: node.position.y - 200 }), NewIntel(value), false, false)
               )
-
+              const newEdges = newNodes.map((n): Edge => {
+                return {
+                  id: "e-" + node.id + "-" + n.id, source: node.id, target: n.id, type: 'floating', markerEnd: { type: MarkerType.Arrow }
+                }
+              })
               upsertNode(...newNodes)
+              upsertEdge(...newEdges)
             }} pipeline={toolStore.getPipeline(t)} value={node.data.intel?.content}></ToolCard>
           </ListItem>)}
 
@@ -110,6 +117,7 @@ export interface ToolCardProps {
 }
 
 export function ToolCard({ name, pipeline, value, onResultChanged }: ToolCardProps) {
+  const [isExec, toggleExec] = useToggle()
   const [toolState, toolActions] = useSecpipeline("http://localhost:8080")
   useEffect(() => {
     onResultChanged?.(toolState.result ?? [])
@@ -153,17 +161,31 @@ export function ToolCard({ name, pipeline, value, onResultChanged }: ToolCardPro
           {source}
         </Stack>
       </Box>
-      <Box sx={{}}>
-        <Button variant="contained" onClick={() => {
+      <Box sx={{ m: 1, position: 'relative' }}>
+        <Button variant="contained" disabled={isExec} onClick={async () => {
+          toggleExec()
           const paramsLen = pipeline.availableParamsKey.length
           if (paramsLen == 0) {
-            toolActions.execute(pipeline, {})
+            await toolActions.execute(pipeline, {})
           } else if (paramsLen == 1 && value) {
-            toolActions.execute(pipeline, { [pipeline.availableParamsKey[0]]: value })
+            await toolActions.execute(pipeline, { [pipeline.availableParamsKey[0]]: value })
           } else {
             console.log("calling tools failed due to undefine value or to many params. Multiple params is not yet handled")
           }
-        }}>Execute</Button>
+          toggleExec()
+        }}>Execute</Button>   {isExec && (
+          <CircularProgress
+            size={24}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              marginTop: '-12px',
+              marginLeft: '-12px',
+            }}
+          />
+        )}
+
 
       </Box>
     </Stack>

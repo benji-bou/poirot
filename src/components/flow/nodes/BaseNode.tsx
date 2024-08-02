@@ -2,7 +2,7 @@ import Card from "@mui/material/Card";
 import { Intel } from "../../../models/Intel"
 import { Handle, NodeProps, NodeResizer, Position, Node, XYPosition, useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CardContent, CardHeader } from "@mui/material";
 import { ReactNode } from 'react'
@@ -19,15 +19,15 @@ export type CardNode = Node<NodeIntelData, 'card'>
 
 // { id: '1', type: 'card', data: { intel: new Intel("0678787878", "target", "phone of the target niahnianiah") }, , },
 
-export function NewCardNode(position: XYPosition, intel?: Intel): CardNode {
+export function NewCardNode(position: XYPosition, intel?: Intel, selected: boolean = true, highlight: boolean = true): CardNode {
 
   return {
     id: uuidv4(),
-    data: { intel: intel, interaction: { highlight: true } },
+    data: { intel: intel, interaction: { highlight: highlight } },
     type: 'card',
     position: { x: position.x - 150, y: position.y },
     selectable: true,
-    selected: false,
+    selected: selected,
     draggable: true,
     width: 300,
     height: 200,
@@ -60,10 +60,11 @@ interface BaseNodeProps {
 }
 
 
-export function BaseNode({ children, selected, id, borderWidth = 5 }: { children: React.ReactNode } & NodeProps<CardNode> & BaseNodeProps) {
+export function BaseNode({ children, selected, id, borderWidth = 5, width, height }: { children: React.ReactNode } & NodeProps<CardNode> & BaseNodeProps) {
+  const [dynamicHandle, onBorderDynHandle, onLeaveHandle] = useDynamicHandlerBorder(id)
   const reactFlow = useReactFlow()
   const [borderW, updateBorderWidth] = useIncreaseBorder(borderWidth)
-  const onBorder = useOnBorder(borderW, updateBorderWidth) //dynamicBorderHandler
+  const onBorder = useOnBorder(borderW, updateBorderWidth, onBorderDynHandle) //dynamicBorderHandler
 
 
   const updateHighligh = useCallback((isIn: boolean) => {
@@ -87,9 +88,9 @@ export function BaseNode({ children, selected, id, borderWidth = 5 }: { children
         whileHover={{ background: ['#CCCCCC'] }}
         onMouseMove={onBorder}
         onMouseEnter={() => { updateHighligh(true) }}
-        onMouseLeave={() => { updateBorderWidth({ x: 0, y: 0 }, Position.Top, false); updateHighligh(false) }}
+        onMouseLeave={(e) => { updateBorderWidth({ x: 0, y: 0 }, Position.Top, false); updateHighligh(false); onLeaveHandle() }}
       >
-        <Handle type={"target"} position={Position.Left} style={{ left: 50 }} />
+        <Handle type={"target"} position={Position.Left} style={{ visibility: "hidden" }} />
         <NodeResizer isVisible={selected} minWidth={100} minHeight={30} />
         <motion.div
           style={{ position: 'absolute', top: borderW, right: borderW, left: borderW }}
@@ -97,8 +98,8 @@ export function BaseNode({ children, selected, id, borderWidth = 5 }: { children
         >
           {children}
         </motion.div >
-        <Handle type={"source"} position={Position.Right} />
-
+        {/* <Handle type={"source"} position={Position.Right} /> */}
+        {dynamicHandle}
 
       </motion.div >
     </AnimatePresence >
@@ -109,18 +110,28 @@ export function BaseNode({ children, selected, id, borderWidth = 5 }: { children
 
 
 
-function useDynamicHandlerBorder(id: string, borderWidth: number): [ReactNode, (position: XYPosition, side: Position, isIn: boolean) => void] {
-  const [handler, setHandler] = useState<ReactNode>()
-
+function useDynamicHandlerBorder(id: string): [ReactNode, (position: XYPosition, side: Position, isIn: boolean) => void, () => void] {
+  const posRef = useRef<XYPosition>({ x: 0, y: 0 })
+  const sideRef = useRef<Position>(Position.Left)
+  const [handler, setHandler] = useState<ReactNode>(<Handle style={{ top: posRef.current.y, left: posRef.current.x, visibility: "hidden" }} type={"source"} position={sideRef.current} />)
   const updateNodeInternals = useUpdateNodeInternals();
-  return [handler, useCallback((pos, side, isIn) => {
+  const onOver = useCallback((pos: XYPosition, side: Position, isIn: boolean) => {
+    posRef.current = pos
+    sideRef.current = side
+    console.log("isInBorder " + isIn)
     if (!isIn) {
-      setHandler(undefined)
+      setHandler(<Handle style={{ top: pos.y, left: pos.x, visibility: "hidden" }} type={"source"} position={side} />)
       return
     }
+    console.log("point " + JSON.stringify(pos))
+    console.log("position " + side)
     setHandler(<Handle style={{ top: pos.y, left: pos.x }} type={"source"} position={side} />)
     updateNodeInternals(id)
-  }, [setHandler, updateNodeInternals])]
+  }, [setHandler, updateNodeInternals])
+  const onLeave = useCallback(() => {
+    setHandler(<Handle style={{ top: posRef.current.y, left: posRef.current.x, visibility: "hidden" }} type={"source"} position={sideRef.current} />)
+  }, [setHandler])
+  return [handler, onOver, onLeave]
 }
 
 function useIncreaseBorder(initial: number): [number, (position: XYPosition, side: Position, isIn: boolean) => void] {

@@ -69,6 +69,10 @@ export class IntelTypeCustomStore {
     [IntelType.CUSTOM]: (input: IntelInput) => {
       return false
     },
+    [IntelType.ACCOUNT]: (input: IntelInput) => {
+      return false
+    },
+
     [IntelType.LINKEDIN]: (input: IntelInput) => {
       if (isURL(input, { host_whitelist: [RegExp(".*\.linkedin.com")] })) {
         return true
