@@ -14,6 +14,7 @@ export function IntelContent({ intel }: IntelContentProp): ReactNode {
   const iT = Object.values(intel.type)
 
   const isUrl = intel.type?.indexOf("url") != -1
+
   return (<>
     <Stack spacing={2}>
       <Stack direction="row" spacing={1}>
@@ -21,8 +22,8 @@ export function IntelContent({ intel }: IntelContentProp): ReactNode {
           return <Chip key={i} label={i} />;
         })}
       </Stack>
-
       {isUrl ? <a href={intel.content} target="_blank">{intel.content}</a> : intel.content}
+
       <List>
         {iT.map((i) => <ListItem key={i}>
           <IntelContentFromType currentType={i} intel={intel} />
@@ -56,15 +57,25 @@ export function IntelContentFromType({ intel, currentType }: IntelContentProp & 
       return <DefaultContent intel={intel} />
     case IntelType.CUSTOM:
       return <DefaultContent intel={intel} />
+    case IntelType.IMAGE:
+      return <MediaContent intel={intel} />
     default:
-      return
+      return <DefaultContent intel={intel} />
   }
 
 }
 
 
 export function DefaultContent({ intel }: IntelContentProp) {
+
   return <>
 
+  </>
+}
+
+
+export function MediaContent({ intel }: IntelContentProp) {
+  return <>
+    <img src={intel?.content}></img>
   </>
 }

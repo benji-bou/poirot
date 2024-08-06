@@ -72,7 +72,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
   const mouseXYRef = useRef({ x: 0, y: 0 })
   const canvaRef = createRef<HTMLDivElement>()
 
-  const handlePast = useCallback((event: ClipboardEvent) => {
+  const handlePast = useCallback(async (event: ClipboardEvent) => {
     if ((event.target as HTMLElement).tagName.toUpperCase() === "INPUT") {
       return
     }
@@ -81,6 +81,20 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
       const newCardNode = NewCardNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(newData))
       upsertNode(newCardNode)
     }
+
+    const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type == "image/png")
+    const base64ImageData = await Promise.all(imageFiles.map(async (f) => {
+      return new Promise<string>((resolve) => {
+        const fr = new FileReader()
+        fr.onloadend = (e) => resolve((e.target?.result ?? "") as string)
+        fr.readAsDataURL(f)
+      })
+    }))
+    const newCardsImage = base64ImageData.map((img) => {
+      return NewCardNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(img))
+    })
+    upsertNode(...newCardsImage)
+
   }, [upsertNode, mouseXYRef])
 
   useEventListener(window, 'paste', handlePast)

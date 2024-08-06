@@ -4,7 +4,7 @@ import Card from "@mui/material/Card"
 import CardHeader from "@mui/material/CardHeader"
 import CardContent from "@mui/material/CardContent"
 import IntelForm from "./IntelForm"
-import { Intel, IntelTypeValidator, IntelTypeIndex, IntelTypeStore, NewIntel } from "../../models/Intel"
+import { Intel, IntelTypeValidator, IntelTypeIndex, IntelTypeStore, NewIntel, IntelInput } from "../../models/Intel"
 import { Box, Button, CircularProgress, Divider, Link, List, ListItem, Stack, Typography } from "@mui/material"
 
 
@@ -17,7 +17,7 @@ import { SecPipeline } from "../../models/tooling"
 import { log } from "console"
 import isURL from "validator/lib/isURL"
 import { useSecpipeline, useToolsStore } from "../../hooks/SecPipeline"
-import { useToggle } from "@react-hookz/web"
+import { useAsync, useMountEffect, useToggle } from "@react-hookz/web"
 
 
 
@@ -48,12 +48,16 @@ export function IntelCard({ id }: IntelCardProps) {
     return Array.from(tools)
   }, [node?.data?.intel?.type])
 
+
+
+  const content = node?.data?.intel?.content ?? node?.data?.intel?.name ?? ""
+
   if (!node) {
     return <></>
   }
 
   return <Card variant="outlined" style={{ width: '100%' }}>
-    <CardHeader title={node.data.intel?.name ?? node.data.intel?.content ?? "New intel"} >
+    <CardHeader title={node.data.intel?.name ?? content ?? "New intel"} >
     </CardHeader>
     <CardContent>
       <Stack
@@ -98,7 +102,7 @@ export function IntelCard({ id }: IntelCardProps) {
               })
               upsertNode(...newNodes)
               upsertEdge(...newEdges)
-            }} pipeline={toolStore.getPipeline(t)} value={node.data.intel?.content}></ToolCard>
+            }} pipeline={toolStore.getPipeline(t)} value={content}></ToolCard>
           </ListItem>)}
 
         </List>

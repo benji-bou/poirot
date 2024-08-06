@@ -19,6 +19,7 @@ export enum IntelType {
   LINKEDIN = "linkedin",
   ACCOUNT = "account",
   CUSTOM = "custom",
+  IMAGE = "image"
 }
 
 
@@ -78,7 +79,10 @@ export class IntelTypeCustomStore {
         return true
       }
       return false
-    }
+    },
+    [IntelType.IMAGE]: (input: IntelInput) => {
+      return input.startsWith("data:image/png;")
+    },
   }
 
   addCustomType(type: string, validator: (input: IntelInput) => boolean = () => true) {
