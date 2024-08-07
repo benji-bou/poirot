@@ -2,13 +2,12 @@ import { useToggle } from '@react-hookz/web';
 import dagre from 'dagre'
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCrudNode, useEdgesState, useNodesState } from '../../../hooks/NodesState';
-import { Position } from '@xyflow/react';
+import { Position, useReactFlow } from '@xyflow/react';
 
 
 export function useGetLayoutedElementsDagre() {
   const [start, runLayout] = useToggle()
-  const [nodes] = useNodesState()
-  const [edges] = useEdgesState()
+  const { getNodes, getEdges } = useReactFlow()
   const [direction, setDirection] = useState<string>('LR')
   const { upsertNode } = useCrudNode()
 
@@ -23,6 +22,8 @@ export function useGetLayoutedElementsDagre() {
   const nodeHeight = 200;
 
   const runActionLayout = useCallback(() => {
+    const nodes = getNodes()
+    const edges = getEdges()
     dagreGraph.setGraph({ rankdir: direction });
     nodes.forEach((node) => {
       dagreGraph.setNode(node.id, { width: node.width ?? nodeWidth, height: node.height ?? nodeHeight });
@@ -49,7 +50,7 @@ export function useGetLayoutedElementsDagre() {
       return newNode;
     });
     upsertNode(...newNodes)
-  }, [nodes, edges, isHorizontal, direction])
+  }, [isHorizontal, direction])
 
   useEffect(() => {
     if (start) {

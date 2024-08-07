@@ -12,13 +12,14 @@ import {
   type DefaultEdgeOptions,
   useReactFlow,
   BackgroundVariant,
-  Panel,
   MarkerType,
   OnConnectEnd,
   OnConnectStart,
+  SelectionMode,
+  MiniMap,
 } from '@xyflow/react';
 
-import { CardBaseNode, NewCardNode, NodeIntelData } from '../nodes/BaseNode'
+import { IntelBaseNode, NewIntelNode, NodeIntelData } from '../nodes/IntelNode'
 import {
   useCrudEdge,
   useCrudNode,
@@ -32,6 +33,7 @@ import '@xyflow/react/dist/style.css'
 import { useEventListener } from '@react-hookz/web';
 import { NewIntel } from '../../../models/Intel';
 import { FloatingConnectionLine, FloatingEdge } from './FloatingEdges';
+import { ToolBaseNode } from '../nodes/ToolNode';
 
 
 
@@ -78,7 +80,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
     }
     const newData = event.clipboardData?.getData("text")
     if (newData) {
-      const newCardNode = NewCardNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(newData))
+      const newCardNode = NewIntelNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(newData))
       upsertNode(newCardNode)
     }
 
@@ -91,7 +93,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
       })
     }))
     const newCardsImage = base64ImageData.map((img) => {
-      return NewCardNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(img))
+      return NewIntelNode(screenToFlowPosition({ x: mouseXYRef.current.x, y: mouseXYRef.current.y }), NewIntel(img))
     })
     upsertNode(...newCardsImage)
 
@@ -119,8 +121,6 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
     if (highlightedNodes.length == 0) {
       return
     }
-    console.log(highlightedNodes[0].id)
-    console.log(currentNodeIdForNewEdge.current)
     if (!currentNodeIdForNewEdge.current || highlightedNodes.length != 1) {
       return
     }
@@ -128,7 +128,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
   }, [getNodes])
 
 
-  const nodeTypes = useMemo(() => ({ card: CardBaseNode }), []);
+  const nodeTypes = useMemo(() => ({ card: IntelBaseNode, tool: ToolBaseNode }), []);
   const [variant, setVariant] = useState<BackgroundVariant>(BackgroundVariant.Cross)
 
   return (
@@ -152,8 +152,10 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
       onDoubleClick={(event: React.MouseEvent) => {
         addNode({ x: event.pageX, y: event.pageY })
       }}
-      fitView
-      fitViewOptions={fitViewOptions}
+      selectionOnDrag
+      selectionMode={SelectionMode.Partial}
+      // fitView
+      // fitViewOptions={fitViewOptions}
       defaultEdgeOptions={edgesOptions}
       zoomOnDoubleClick={false}
 
@@ -161,7 +163,7 @@ export function Canvas({ edgesOptions = defaultEdgeOptions }: CanvasProps) {
       <Background color="#cec" variant={variant} />
       <Controls />
 
-      {/* <MiniMap nodeStrokeWidth={3} zoomable pannable /> */}
+      <MiniMap nodeStrokeWidth={3} zoomable pannable />
     </ReactFlow>
   );
 }

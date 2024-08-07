@@ -1,4 +1,4 @@
-import { type Edge, type Node } from '@xyflow/react';
+import { useReactFlow, type Edge, type Node } from '@xyflow/react';
 import { stratify, tree } from 'd3-hierarchy';
 import { useCrudEdge, useCrudNode, useEdgesState, useNodesState } from '../../../hooks/NodesState';
 import { useCallback } from 'react';
@@ -6,8 +6,8 @@ import { useCallback } from 'react';
 const g = tree<Node>();
 
 export function useGetLayoutedElementsHierarchy() {
+  const { getNodes, getEdges } = useReactFlow()
 
-  const [nodes] = useNodesState()
   const [edges] = useEdgesState()
 
   const { upsertNode } = useCrudNode()
@@ -15,6 +15,8 @@ export function useGetLayoutedElementsHierarchy() {
 
 
   return useCallback(() => {
+    const nodes = getNodes()
+    const edges = getEdges()
     const { width, height } = document
       .querySelector(`[data-id="${nodes[0].id}"]`)!.getBoundingClientRect()
 
@@ -29,6 +31,6 @@ export function useGetLayoutedElementsHierarchy() {
       .descendants()
       .map((node) => ({ ...node.data, position: { x: node.x, y: node.y } })),)
 
-  }, [nodes, edges, upsertNode])
+  }, [upsertNode])
 
 };

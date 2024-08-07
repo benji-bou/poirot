@@ -1,12 +1,12 @@
 import {
   OnNodesChange,
-  useNodesState as useRfNodesState,
-  useEdgesState as useRfEdgesState,
+
+
   type Edge,
   type Node,
   OnEdgesChange,
   useNodes,
-  useEdges,
+
   applyNodeChanges,
   NodeChange,
   EdgeChange,
@@ -14,11 +14,11 @@ import {
   XYPosition,
   useReactFlow,
 } from "@xyflow/react";
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import { createContext } from "react";
-import { idText } from "typescript";
-import { NewCardNode, NodeIntelData } from "../components/flow/nodes/BaseNode";
+
+import { NewIntelNode, NodeIntelData } from "../components/flow/nodes/IntelNode";
 type NodesIndex = {
   [id: string]: Node
 }
@@ -183,7 +183,7 @@ export function useNewCardNode() {
   const { screenToFlowPosition } = useReactFlow()
   const { upsertNode } = useCrudNode()
   return useCallback((position: XYPosition) => {
-    const newCardNode = NewCardNode(screenToFlowPosition(position))
+    const newCardNode = NewIntelNode(screenToFlowPosition(position))
     upsertNode(newCardNode)
 
   }, [upsertNode])

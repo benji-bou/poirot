@@ -85,9 +85,7 @@ type LayoutNode = XYPosition & Node
 export function useLayoutedElementsForce() {
 
   const [start, runLayout] = useToggle()
-  const [nodes] = useNodesState()
-  const [edges] = useEdgesState()
-
+  const { getNodes, getEdges } = useReactFlow()
   const { upsertNode } = useCrudNode()
   const simulation = useMemo(() => {
     return forceSimulation<LayoutNode, Edge>()
@@ -101,12 +99,13 @@ export function useLayoutedElementsForce() {
 
   }, [])
 
-  const layoutEdges = useMemo(() => {
-    return edges.map((e) => { return { ...e } })
-  }, [edges])
+
+
 
 
   const startSimulation = useCallback(() => {
+    const nodes = getNodes()
+    const layoutEdges = getEdges().map((e) => { return { ...e } })
     const layoutNodes = nodes.map((n): LayoutNode => { return { ...n, x: n.position.x, y: n.position.y } })
     simulation.nodes(layoutNodes)
       .force('links',
@@ -117,7 +116,7 @@ export function useLayoutedElementsForce() {
       )
       .restart()
 
-  }, [nodes, edges, upsertNode, simulation])
+  }, [upsertNode, simulation])
 
 
   useEffect(() => {

@@ -1,78 +1,33 @@
-import Card from "@mui/material/Card";
-import { Intel } from "../../../models/Intel"
+
+
 import { Handle, NodeProps, NodeResizer, Position, Node, XYPosition, useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
-import { v4 as uuidv4 } from 'uuid';
+
 import React, { useCallback, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { CardContent, CardHeader } from "@mui/material";
+import { AnimatePresence, CustomValueType, motion } from "framer-motion";
+
 import { ReactNode } from 'react'
-import { IntelContent } from "./IntelContent";
 
 
-export type NodeIntelData = {
-  interaction?: { highlight: boolean },
-  intel?: Intel
-}
-
-
-export type CardNode = Node<NodeIntelData, 'card'>
-
-// { id: '1', type: 'card', data: { intel: new Intel("0678787878", "target", "phone of the target niahnianiah") }, , },
-
-export function NewCardNode(position: XYPosition, intel?: Intel, selected: boolean = true, highlight: boolean = true): CardNode {
-
-  return {
-    id: uuidv4(),
-    data: { intel: intel, interaction: { highlight: highlight } },
-    type: 'card',
-    position: { x: position.x - 150, y: position.y },
-    selectable: true,
-    selected: selected,
-    draggable: true,
-    width: 300,
-    height: 200,
-  }
-}
-
-
-
-
-
-export function CardBaseNode({ data, selected, id, ...rest }: NodeProps<CardNode>) {
-  return <BaseNode selected={selected} data={data} id={id} {...rest}>
-    <Card
-      style={{ height: '100%' }}
-      raised={true}
-    >
-      {data.intel ?
-
-        <CardContent>
-          <IntelContent intel={data.intel}></IntelContent>
-        </CardContent> : <></>
-      }
-    </Card>
-  </BaseNode >
-
-}
 
 interface BaseNodeProps {
   borderWidth?: number
+  borderRadius?: string | number
 }
 
 
-export function BaseNode({ children, selected, id, borderWidth = 5, width, height }: { children: React.ReactNode } & NodeProps<CardNode> & BaseNodeProps) {
+export function BaseNode({ children, selected, id, borderWidth = 5, width, height, borderRadius = '5px' }: { children: React.ReactNode } & NodeProps<Node> & BaseNodeProps) {
   const [dynamicHandle, onBorderDynHandle, onLeaveHandle] = useDynamicHandlerBorder(id)
-  const reactFlow = useReactFlow()
+  const { updateNodeData } = useReactFlow()
   const [borderW, updateBorderWidth] = useIncreaseBorder(borderWidth)
   const onBorder = useOnBorder(borderW, updateBorderWidth, onBorderDynHandle) //dynamicBorderHandler
 
 
   const updateHighligh = useCallback((isIn: boolean) => {
-    reactFlow.updateNodeData(id, (node) => {
+    updateNodeData(id, (node) => {
       const newNodeData = { ...node.data, interaction: { highlight: isIn } }
       return newNodeData
     }, { replace: false })
-  }, [reactFlow])
+  }, [updateNodeData])
 
 
 
@@ -80,7 +35,7 @@ export function BaseNode({ children, selected, id, borderWidth = 5, width, heigh
   return <>
     <AnimatePresence>
       <motion.div
-        initial={{ height: '0%', borderRadius: '5px', background: '#ffffff00' }} //
+        initial={{ height: '0%', borderRadius: borderRadius, background: '#ffffff00' }} //
         animate={{
           height: '100%',
           width: '100%'
@@ -91,7 +46,7 @@ export function BaseNode({ children, selected, id, borderWidth = 5, width, heigh
         onMouseLeave={(e) => { updateBorderWidth({ x: 0, y: 0 }, Position.Top, false); updateHighligh(false); onLeaveHandle() }}
       >
         <Handle type={"target"} position={Position.Left} style={{ visibility: "hidden" }} />
-        <NodeResizer isVisible={selected} minWidth={100} minHeight={30} />
+        {/* <NodeResizer isVisible={selected} minWidth={100} minHeight={30} /> */}
         <motion.div
           style={{ position: 'absolute', top: borderW, right: borderW, left: borderW }}
           animate={{ top: borderW, right: borderW, bottom: borderW, left: borderW }}
@@ -118,13 +73,11 @@ function useDynamicHandlerBorder(id: string): [ReactNode, (position: XYPosition,
   const onOver = useCallback((pos: XYPosition, side: Position, isIn: boolean) => {
     posRef.current = pos
     sideRef.current = side
-    console.log("isInBorder " + isIn)
     if (!isIn) {
       setHandler(<Handle style={{ top: pos.y, left: pos.x, visibility: "hidden" }} type={"source"} position={side} />)
       return
     }
-    console.log("point " + JSON.stringify(pos))
-    console.log("position " + side)
+
     setHandler(<Handle style={{ top: pos.y, left: pos.x }} type={"source"} position={side} />)
     updateNodeInternals(id)
   }, [setHandler, updateNodeInternals])
@@ -144,9 +97,9 @@ function useIncreaseBorder(initial: number): [number, (position: XYPosition, sid
 
 
 function useOnBorder(borderWidth: number, ...onBorder: ((position: XYPosition, side: Position, isInBorder: boolean) => void)[]): (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void {
-  const reactFlow = useReactFlow()
+  const { getZoom } = useReactFlow()
   return useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    const zoom = reactFlow.getZoom()
+    const zoom = getZoom()
     const bond = e.currentTarget.getBoundingClientRect()
     const client = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
     const h = (bond.height - borderWidth) / zoom
@@ -174,5 +127,5 @@ function useOnBorder(borderWidth: number, ...onBorder: ((position: XYPosition, s
       return
     }
     onBorder.forEach((fn) => fn({ x: x, y: y }, posRes, true))
-  }, [borderWidth, reactFlow, onBorder])
+  }, [borderWidth, getZoom, onBorder])
 }

@@ -1,5 +1,5 @@
-import { Edge, MarkerType, useReactFlow } from "@xyflow/react"
-import { CardNode, NewCardNode, NodeIntelData } from "../flow/nodes/BaseNode"
+import { Edge, MarkerType, useReactFlow, type Node } from "@xyflow/react"
+import { IntelNode, NewIntelNode, NodeIntelData } from "../flow/nodes/IntelNode"
 import Card from "@mui/material/Card"
 import CardHeader from "@mui/material/CardHeader"
 import CardContent from "@mui/material/CardContent"
@@ -11,17 +11,18 @@ import { Box, Button, CircularProgress, Divider, Link, List, ListItem, Stack, Ty
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useCrudEdge, useCrudNode, useNode } from "../../hooks/NodesState"
-import { SecPipeline } from "../../models/tooling"
+import { ExecuteTool, Tool } from "../../models/tooling"
 import { log } from "console"
 import isURL from "validator/lib/isURL"
-import { useSecpipeline, useToolsStore } from "../../hooks/SecPipeline"
+import { useTool, useToolsStore } from "../../hooks/SecPipeline"
 import { useAsync, useMountEffect, useToggle } from "@react-hookz/web"
+import { NewToolNode } from "../flow/nodes/ToolNode"
 
 
 
-interface IntelCardProps extends CardNode {
+interface IntelCardProps extends IntelNode {
 
 }
 
@@ -31,8 +32,9 @@ export function IntelCard({ id }: IntelCardProps) {
   const { screenToFlowPosition } = useReactFlow()
   const { upsertNode } = useCrudNode()
   const { upsertEdge } = useCrudEdge()
+  const toolNodeCreated = useRef<{ [toolName: string]: Node }>({})
   const toolStore = useToolsStore()
-  const [node, updateNode] = useNode<CardNode>(id)
+  const [node, updateNode] = useNode<IntelNode>(id)
   const options = useMemo<string[]>(
     () => {
       const keys = Object.keys(IntelTypeStore.all)
@@ -47,8 +49,33 @@ export function IntelCard({ id }: IntelCardProps) {
     }, new Set<string>()) ?? new Set<string>()
     return Array.from(tools)
   }, [node?.data?.intel?.type])
+  console.log("intelCard toolNodeCreated" + JSON.stringify(toolNodeCreated.current))
+  const onExecute = useCallback((t: string) => {
+    const toolNode = NewToolNode(screenToFlowPosition({ x: node.position.x + (node.width ?? 300) + 200, y: node.position.y }), t)
+    upsertNode(toolNode)
+    upsertEdge({
+      id: "e-" + node.id + "-" + toolNode.id, source: node.id, target: toolNode.id, type: 'floating', markerEnd: { type: MarkerType.Arrow }
+    })
+    toolNodeCreated.current = { ...toolNodeCreated.current, [t]: toolNode }
+    console.log("intelCard onExecute toolNodeCreated" + JSON.stringify(toolNodeCreated.current))
+  }, [toolNodeCreated, upsertNode, upsertEdge])
 
 
+
+  const onResultChanged = useCallback((t: string, values: string[]) => {
+    const newNodes = values.map((value) =>
+      NewIntelNode(screenToFlowPosition({ x: node.position.x - 200, y: node.position.y - 200 }), NewIntel(value), false, false)
+    )
+    const tNode = toolNodeCreated.current[t]
+    const newEdges = newNodes.map((n): Edge => {
+      return {
+        id: "e-" + tNode.id + "-" + n.id, source: tNode.id, target: n.id, type: 'floating', markerEnd: { type: MarkerType.Arrow }
+      }
+    })
+    upsertNode(...newNodes)
+    upsertEdge(...newEdges)
+    delete toolNodeCreated.current[t]
+  }, [upsertNode, upsertEdge, toolNodeCreated])
 
   const content = node?.data?.intel?.content ?? node?.data?.intel?.name ?? ""
 
@@ -91,18 +118,11 @@ export function IntelCard({ id }: IntelCardProps) {
         <Divider />
         <List>
           {toolListName.map((t) => <ListItem key={t}>
-            <ToolCard name={t} onResultChanged={(values) => {
-              const newNodes = values.map((value) =>
-                NewCardNode(screenToFlowPosition({ x: node.position.x - 200, y: node.position.y - 200 }), NewIntel(value), false, false)
-              )
-              const newEdges = newNodes.map((n): Edge => {
-                return {
-                  id: "e-" + node.id + "-" + n.id, source: node.id, target: n.id, type: 'floating', markerEnd: { type: MarkerType.Arrow }
-                }
-              })
-              upsertNode(...newNodes)
-              upsertEdge(...newEdges)
-            }} pipeline={toolStore.getPipeline(t)} value={content}></ToolCard>
+            <ToolCard name={t}
+              onExecute={() => { onExecute(t) }}
+              onResultChanged={(values) => {
+                onResultChanged(t, values)
+              }} pipeline={toolStore.getPipeline(t)} value={content}></ToolCard>
           </ListItem>)}
 
         </List>
@@ -115,16 +135,19 @@ export function IntelCard({ id }: IntelCardProps) {
 
 export interface ToolCardProps {
   name: string
-  pipeline: SecPipeline
+  pipeline: ExecuteTool & Tool<any>
   value?: string
   onResultChanged?: (res: string[]) => void
+  onExecute?: () => void
 }
 
-export function ToolCard({ name, pipeline, value, onResultChanged }: ToolCardProps) {
+export function ToolCard({ name, pipeline, value, onResultChanged, onExecute }: ToolCardProps) {
   const [isExec, toggleExec] = useToggle()
-  const [toolState, toolActions] = useSecpipeline("http://localhost:8080")
+  const [toolState, toolActions] = useTool()
   useEffect(() => {
-    onResultChanged?.(toolState.result ?? [])
+    if (toolState.status === "success") {
+      onResultChanged?.(toolState.result ?? [])
+    }
   }, [toolState])
   const source = useMemo(() => {
     if (!pipeline.source) {
@@ -167,6 +190,7 @@ export function ToolCard({ name, pipeline, value, onResultChanged }: ToolCardPro
       </Box>
       <Box sx={{ m: 1, position: 'relative' }}>
         <Button variant="contained" disabled={isExec} onClick={async () => {
+          onExecute?.()
           toggleExec()
           const paramsLen = pipeline.availableParamsKey.length
           if (paramsLen == 0) {
